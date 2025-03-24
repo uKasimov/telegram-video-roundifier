@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  roundifier:
+    image: node:20-slim
+    working_dir: /app
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - roundifier_deps:/root/.local/lib/python3.9/site-packages
+    ports:
+      - '3000:3000'
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+    command: >
+      bash -c "if [ ! -f /tmp/.initialized ]; then
+        apt-get update &&
+        apt-get install -y python3 python3-pip ffmpeg &&
+        pip3 install yt-dlp &&
+        touch /tmp/.initialized;
+      fi &&
+      npm install &&
+      npm run build &&
+      mkdir -p temp &&
+      npm run start:prod"
+
+volumes:
+  roundifier_deps:
