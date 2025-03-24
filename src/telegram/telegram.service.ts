@@ -5,8 +5,8 @@ import * as ffmpeg from 'fluent-ffmpeg';
 import * as fs from 'fs';
 import * as path from 'path';
 import { Telegraf, Context, Middleware } from 'telegraf';
-import { Update } from 'telegraf/typings/core/types/typegram';
 import { promisify } from 'util';
+
 const youtubeDl = require('youtube-dl-exec');
 import { LanguageService } from '../i18n/language.service';
 import { Language, t } from '../i18n/translations';
@@ -16,6 +16,7 @@ interface YoutubeVideoInfo {
   id: string;
   duration: number;
   title?: string;
+
   [key: string]: any; // Allow other properties
 }
 
@@ -27,7 +28,7 @@ export class TelegramService implements OnModuleInit {
   private bot: Telegraf;
   private ffprobe = promisify(ffmpeg.ffprobe);
   private readonly tempDirPath: string;
-  
+
   // Helper method to get the temp directory path
   private getTempDir(): string {
     return this.tempDirPath;
@@ -35,14 +36,14 @@ export class TelegramService implements OnModuleInit {
 
   constructor(
     private readonly configService: ConfigService,
-    private readonly languageService: LanguageService
+    private readonly languageService: LanguageService,
   ) {
     const token = this.configService.get<string>('TELEGRAM_BOT_TOKEN');
     if (!token) {
       throw new Error('TELEGRAM_BOT_TOKEN is not defined');
     }
     this.bot = new Telegraf(token);
-    
+
     // Initialize the temp directory path
     this.tempDirPath = './temp';
     if (!fs.existsSync(this.tempDirPath)) {
@@ -54,15 +55,17 @@ export class TelegramService implements OnModuleInit {
     // Add language command
     this.bot.command('language', (ctx) => this.handleLanguageCommand(ctx));
     this.bot.command('lang', (ctx) => this.handleLanguageCommand(ctx));
-    
+
     // Add language shortcuts
     this.bot.command('en', (ctx) => this.setLanguage(ctx, 'en'));
     this.bot.command('ru', (ctx) => this.setLanguage(ctx, 'ru'));
     this.bot.command('uz', (ctx) => this.setLanguage(ctx, 'uz'));
-    
+
     // Register language selection callback
-    this.bot.action(/^(uz|ru|en)$/, (ctx) => this.handleLanguageCallback(ctx as any));
-    
+    this.bot.action(/^(uz|ru|en)$/, (ctx) =>
+      this.handleLanguageCallback(ctx as any),
+    );
+
     this.bot.command('start', (ctx) => {
       const userId = ctx.from?.id;
       const lang = userId ? this.languageService.getUserLanguage(userId) : 'ru';
@@ -83,7 +86,9 @@ export class TelegramService implements OnModuleInit {
       try {
         const url = ctx.message.text;
         const userId = ctx.from?.id;
-        const lang = userId ? this.languageService.getUserLanguage(userId) : 'ru';
+        const lang = userId
+          ? this.languageService.getUserLanguage(userId)
+          : 'ru';
 
         if (this.isYouTubeUrl(url) || this.isInstagramUrl(url)) {
           // For video URLs, we'll use a shorter callback data format
@@ -91,13 +96,16 @@ export class TelegramService implements OnModuleInit {
           const urlId = Date.now().toString();
           this.tempUrls = this.tempUrls || new Map();
           this.tempUrls.set(urlId, url);
-          
+
           await ctx.reply(t('choosingFormat', lang), {
             reply_markup: {
               inline_keyboard: [
                 [
                   { text: t('roundVideo', lang), callback_data: `r_${urlId}` },
-                  { text: t('regularVideo', lang), callback_data: `n_${urlId}` },
+                  {
+                    text: t('regularVideo', lang),
+                    callback_data: `n_${urlId}`,
+                  },
                 ],
               ],
             },
@@ -108,7 +116,9 @@ export class TelegramService implements OnModuleInit {
       } catch (error) {
         console.error('URL processing error:', error);
         const userId = ctx.from?.id;
-        const lang = userId ? this.languageService.getUserLanguage(userId) : 'ru';
+        const lang = userId
+          ? this.languageService.getUserLanguage(userId)
+          : 'ru';
         await ctx.reply(t('errorGeneral', lang));
       }
     });
@@ -116,16 +126,18 @@ export class TelegramService implements OnModuleInit {
     this.bot.action(/^(r|n)_(.+)$/, async (ctx) => {
       try {
         const userId = ctx.from?.id;
-        const lang = userId ? this.languageService.getUserLanguage(userId) : 'ru';
-        
+        const lang = userId
+          ? this.languageService.getUserLanguage(userId)
+          : 'ru';
+
         const urlId = ctx.match[2];
         const url = this.tempUrls.get(urlId);
-        
+
         if (!url) {
           await ctx.reply(t('errorGeneral', lang));
           return;
         }
-        
+
         const isRound = ctx.match[1] === 'r';
 
         await ctx.editMessageText(t('processingVideo', lang), {
@@ -150,7 +162,9 @@ export class TelegramService implements OnModuleInit {
       try {
         const video = ctx.message.video;
         const userId = ctx.from?.id;
-        const lang = userId ? this.languageService.getUserLanguage(userId) : 'ru';
+        const lang = userId
+          ? this.languageService.getUserLanguage(userId)
+          : 'ru';
 
         if (!video) {
           await ctx.reply(t('videoNotFound', lang));
@@ -173,7 +187,7 @@ export class TelegramService implements OnModuleInit {
         const fileRefId = Date.now().toString();
         this.tempFileIds = this.tempFileIds || new Map();
         this.tempFileIds.set(fileRefId, fileId);
-        
+
         await ctx.reply(t('choosingFormat', lang), {
           reply_markup: {
             inline_keyboard: [
@@ -193,7 +207,9 @@ export class TelegramService implements OnModuleInit {
       } catch (error) {
         console.error('General error:', error);
         const userId = ctx.from?.id;
-        const lang = userId ? this.languageService.getUserLanguage(userId) : 'ru';
+        const lang = userId
+          ? this.languageService.getUserLanguage(userId)
+          : 'ru';
         await ctx.reply(t('errorGeneral', lang));
       }
     });
@@ -201,33 +217,37 @@ export class TelegramService implements OnModuleInit {
     this.bot.action(/^(rf|nf)_(.+)$/, async (ctx) => {
       try {
         const userId = ctx.from?.id;
-        const lang = userId ? this.languageService.getUserLanguage(userId) : 'ru';
-        
+        const lang = userId
+          ? this.languageService.getUserLanguage(userId)
+          : 'ru';
+
         // Get the file reference ID
         const fileRefId = ctx.match[2];
-        
+
         // Get the actual file ID from our temporary storage
         const fileId = this.tempFileIds.get(fileRefId);
-        
+
         // Check if we have a valid file ID
         if (!fileId) {
           await ctx.reply(t('errorGeneral', lang));
           return;
         }
-        
+
         const isRound = ctx.match[1] === 'rf';
 
         await ctx.editMessageText(t('processingVideo', lang), {
           reply_markup: undefined,
         });
         await this.processVideoFile(ctx, fileId, isRound);
-        
+
         // Clean up the temporary file ID
         this.tempFileIds.delete(fileRefId);
       } catch (error) {
         console.error('File processing error:', error);
         const userId = ctx.from?.id;
-        const lang = userId ? this.languageService.getUserLanguage(userId) : 'ru';
+        const lang = userId
+          ? this.languageService.getUserLanguage(userId)
+          : 'ru';
         await ctx.reply(t('errorProcessingFile', lang));
       }
     });
@@ -246,7 +266,7 @@ export class TelegramService implements OnModuleInit {
   private async handleLanguageCommand(ctx: Context) {
     const userId = ctx.from?.id;
     const lang = userId ? this.languageService.getUserLanguage(userId) : 'ru';
-    
+
     await ctx.reply(t('chooseLanguage', lang), {
       reply_markup: {
         inline_keyboard: [
@@ -274,19 +294,21 @@ export class TelegramService implements OnModuleInit {
   /**
    * Handle language selection callback
    */
-  private async handleLanguageCallback(ctx: Context & { match: RegExpExecArray }) {
+  private async handleLanguageCallback(
+    ctx: Context & { match: RegExpExecArray },
+  ) {
     const userId = ctx.from?.id;
     if (!userId) return;
-    
+
     // Get language code from the regex match
     const match = ctx.match;
     if (!match || !match[1]) return;
-    
+
     const langCode = match[1] as Language;
-    
+
     // Set the user's language preference
     this.languageService.setUserLanguage(userId, langCode);
-    
+
     // Update the message
     await ctx.editMessageText(t('languageChanged', langCode));
   }
@@ -334,8 +356,12 @@ export class TelegramService implements OnModuleInit {
 
       if (segments > 1) {
         const userId = ctx.from?.id;
-        const lang = userId ? this.languageService.getUserLanguage(userId) : 'ru';
-        await ctx.reply(t('videoLongerThanMinute', lang, Math.floor(duration), segments));
+        const lang = userId
+          ? this.languageService.getUserLanguage(userId)
+          : 'ru';
+        await ctx.reply(
+          t('videoLongerThanMinute', lang, Math.floor(duration), segments),
+        );
       }
 
       const tempDir = this.getTempDir();
@@ -345,7 +371,9 @@ export class TelegramService implements OnModuleInit {
         const outputPath = path.join(tempDir, `output-${identifier}-${i}.mp4`);
 
         const userId = ctx.from?.id;
-        const lang = userId ? this.languageService.getUserLanguage(userId) : 'ru';
+        const lang = userId
+          ? this.languageService.getUserLanguage(userId)
+          : 'ru';
         await ctx.reply(t('processingPart', lang, i + 1, segments));
 
         await new Promise((resolve, reject) => {
@@ -373,10 +401,10 @@ export class TelegramService implements OnModuleInit {
             .toFormat('mp4')
             .on('progress', (progress) => {
               // Ensure progress percentage is a number and format it properly
-              const percent = progress.percent ? Math.round(progress.percent * 100) / 100 : 0;
-              console.log(
-                `Processing part ${i + 1}: ${percent}% done`,
-              );
+              const percent = progress.percent
+                ? Math.round(progress.percent * 100) / 100
+                : 0;
+              console.log(`Processing part ${i + 1}: ${percent}% done`);
             })
             .on('end', resolve)
             .on('error', reject)
@@ -416,32 +444,36 @@ export class TelegramService implements OnModuleInit {
           dumpSingleJson: true,
           noWarnings: true,
         });
-        
+
         // Collect the output
         let output = '';
         subprocess.stdout.on('data', (data) => {
           output += data.toString();
         });
-        
+
         await new Promise((resolve, reject) => {
           subprocess.on('close', (code) => {
             if (code === 0) resolve(null);
             else reject(new Error(`Process exited with code ${code}`));
           });
         });
-        
+
         const videoInfo = JSON.parse(output) as YoutubeVideoInfo;
 
         if (!videoInfo || !videoInfo.id) {
           const userId = ctx.from?.id;
-          const lang = userId ? this.languageService.getUserLanguage(userId) : 'ru';
+          const lang = userId
+            ? this.languageService.getUserLanguage(userId)
+            : 'ru';
           await ctx.reply(t('videoNotFound', lang));
           return;
         }
 
         if (!videoInfo.duration || videoInfo.duration > 600) {
           const userId = ctx.from?.id;
-          const lang = userId ? this.languageService.getUserLanguage(userId) : 'ru';
+          const lang = userId
+            ? this.languageService.getUserLanguage(userId)
+            : 'ru';
           await ctx.reply(t('videoTooLong', lang));
           return;
         }
@@ -453,7 +485,7 @@ export class TelegramService implements OnModuleInit {
           output: `${inputPath}`,
           format: 'mp4',
         });
-        
+
         await new Promise((resolve, reject) => {
           downloadProcess.on('close', (code) => {
             if (code === 0) resolve(null);
@@ -503,7 +535,7 @@ export class TelegramService implements OnModuleInit {
             'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
           ],
         });
-        
+
         await new Promise((resolve, reject) => {
           downloadProcess.on('close', (code) => {
             if (code === 0) resolve(null);
